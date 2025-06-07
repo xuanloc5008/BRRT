@@ -323,6 +323,15 @@ class BRRT(Search):
             print(f"[Tree Build] ({tree_name}) {parent} -> {child}")
         else:
             print(f"[Warning] ({tree_name}) Attempted to add self-loop at node {child}, skipped.")
+    # def get_adjacent_nodes(self, node):
+    #     x, y = node
+    #     neighbors = []
+    #     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Chỉ các hướng ngang/dọc
+    #         nx, ny = x + dx, y + dy
+    #         if 0 <= nx < self.board.v_cells and 0 <= ny < self.board.h_cells:
+    #             if (nx, ny) not in self.board.wall:
+    #                 neighbors.append((nx, ny))
+    #     return neighbors
 
     def sample_points_in_circle(self, center, radius, num_samples):
         cx, cy = center
@@ -373,13 +382,14 @@ class BRRT(Search):
                 if dist == 0:
                     x_rand = s_guide
                 else:
-                    t = random.uniform(0, 1)
-                    x_rand = (
-                        int(s_guide[0] + t * direction[0]),
-                        int(s_guide[1] + t * direction[1])
-                    )
-                    if not (0 <= x_rand[0] < self.board.v_cells and 0 <= x_rand[1] < self.board.h_cells) or x_rand in self.board.wall:
-                        x_rand = t_guide
+                    # Chọn hàng xóm gần nhất theo hướng heuristic
+                    candidates = self.get_adjacent_nodes(s_guide)
+                    if not candidates:
+                        x_rand = s_guide
+                    else:
+                        # Ưu tiên hàng xóm nào gần t_guide nhất
+                        candidates.sort(key=lambda n: self.heuristic(n, t_guide))
+                        x_rand = candidates[0]
         return x_rand
 
     def compute_distance(self, p1, p2):
@@ -403,7 +413,7 @@ class BRRT(Search):
                 best_node = node
         return best_node
     def step_from_to(self, start, target):
-        """Tiến một bước từ start về phía target, với khoảng cách tối đa là step_size."""
+        """Tiến một bước từ `start` về phía `target`, với khoảng cách tối đa là `step_size`."""
         dx = target[0] - start[0]
         dy = target[1] - start[1]
         dist = math.hypot(dx, dy)
@@ -511,24 +521,47 @@ class BRRT(Search):
                         pygame.quit()
                         return
                 time.sleep(0.1)
+    def interpolate_path(self, start, end):
+        """Trả về danh sách các ô từ start đến end theo từng bước liền kề (4 hướng)."""
+        path = [start]
+        x1, y1 = start
+        x2, y2 = end
+        while (x1, y1) != (x2, y2):
+            if x1 < x2: x1 += 1
+            elif x1 > x2: x1 -= 1
+            elif y1 < y2: y1 += 1
+            elif y1 > y2: y1 -= 1
+            path.append((x1, y1))
+        return path
 
     def build_path(self, connect_node):
-        def trace_path(tree, node, name):
+        def trace_path(tree, node):
             path = []
             while node is not None and node in tree:
                 path.append(node)
                 node = tree[node]
             return path
 
-        path_start = trace_path(self.start_tree, connect_node, "start_tree")
-        path_goal = trace_path(self.goal_tree, connect_node, "goal_tree")
-        
+        path_start = trace_path(self.start_tree, connect_node)
+        path_goal = trace_path(self.goal_tree, connect_node)
+
         if not path_start or not path_goal:
             print("[ERROR] Could not build complete path.")
             return []
 
         path_start.reverse()
-        return path_start + path_goal[1:] if path_goal else path_start
+        full_path = []
+
+        # Nối từng cặp điểm bằng các bước nhỏ
+        combined_path = path_start + path_goal[1:]
+        for i in range(len(combined_path) - 1):
+            seg = self.interpolate_path(combined_path[i], combined_path[i + 1])
+            if i > 0:
+                seg = seg[1:]  # tránh trùng điểm
+            full_path.extend(seg)
+
+        return full_path
+
 
     def output(self):
         if not self.find or not self.path:
@@ -553,3 +586,4 @@ class BRRT(Search):
             print(f"[INFO] Found {len(common_nodes)} common node(s):")
             for node in common_nodes:
                 print(f" - {node}")
+
