@@ -123,3 +123,9 @@ class Maze:
             self.board.wall.remove(frontier)
 
             pygame.display.flip()
+
+    def getWall(self):
+        """
+        return wall cells
+        """
+        return self.board.wall

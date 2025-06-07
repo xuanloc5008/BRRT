@@ -65,25 +65,25 @@ reset_button = RectButton(
                         text="Reset", textcolor=colors["black"],
                         rectcolor=colors["white"],screen=screen,font=RectButtonFont)
 
-dijkstra_button = CirButton(
-                            center=(17*PADDING+10,3*PADDING), radius=RADIUS, text="D",
-                            textcolor=colors["black"], circolor=colors["white"],
-                            screen=screen, font=CirButtonFont)
+# dijkstra_button = CirButton(
+#                             center=(17*PADDING+10,3*PADDING), radius=RADIUS, text="D",
+#                             textcolor=colors["black"], circolor=colors["white"],
+#                             screen=screen, font=CirButtonFont)
 
-bfs_button = CirButton(
-                        center=(17*PADDING+10,6*PADDING), radius=RADIUS, text="B",
-                        textcolor=colors["black"], circolor=colors["white"],
-                        screen=screen, font=CirButtonFont)
+# bfs_button = CirButton(
+#                         center=(17*PADDING+10,6*PADDING), radius=RADIUS, text="B",
+#                         textcolor=colors["black"], circolor=colors["white"],
+#                         screen=screen, font=CirButtonFont)
 
-asearch_button = CirButton(
-                            center=(17*PADDING+10,9*PADDING), radius=RADIUS, text="A",
-                            textcolor=colors["black"], circolor=colors["white"],
-                            screen=screen, font=CirButtonFont)
+# asearch_button = CirButton(
+#                             center=(17*PADDING+10,9*PADDING), radius=RADIUS, text="A",
+#                             textcolor=colors["black"], circolor=colors["white"],
+#                             screen=screen, font=CirButtonFont)
 
-qlearning_button = CirButton(
-                            center=(17*PADDING+10,12*PADDING), radius=RADIUS, text="Q",
-                            textcolor=colors["black"], circolor=colors["white"],
-                            screen=screen, font=CirButtonFont)
+# qlearning_button = CirButton(
+#                             center=(17*PADDING+10,12*PADDING), radius=RADIUS, text="Q",
+#                             textcolor=colors["black"], circolor=colors["white"],
+#                             screen=screen, font=CirButtonFont)
 brrt_button = CirButton(
                         center=(17*PADDING+10,15*PADDING), radius=RADIUS, text="R",
                         textcolor=colors["black"], circolor=colors["white"],
@@ -114,10 +114,10 @@ while True:
         reset_button()
 
         # call algorithm buttons
-        dijkstra_button()
-        bfs_button()
-        asearch_button()
-        qlearning_button()
+        # dijkstra_button()
+        # bfs_button()
+        # asearch_button()
+        # qlearning_button()
         brrt_button()
 
         # if Reset button is pressed, change color back to white and set flag to False
@@ -220,53 +220,53 @@ while True:
 
             # Algorithm selections
             # button for dijkstra
-            if dijkstra_button.distance(mouse) < RADIUS:
-                ALGO = "Dijkstra"
+            # if dijkstra_button.distance(mouse) < RADIUS:
+            #     ALGO = "Dijkstra"
 
-                dijkstra_button.color_change(colors["yellow"])
-                bfs_button.color_change(colors["white"])
-                asearch_button.color_change(colors["white"])
-                qlearning_button.color_change(colors["white"])
-                time.sleep(0.1)   
+            #     dijkstra_button.color_change(colors["yellow"])
+            #     bfs_button.color_change(colors["white"])
+            #     asearch_button.color_change(colors["white"])
+            #     qlearning_button.color_change(colors["white"])
+            #     time.sleep(0.1)   
 
             # button for BFS
-            elif bfs_button.distance(mouse) < RADIUS:
-                ALGO = "BFS"
+            # elif bfs_button.distance(mouse) < RADIUS:
+            #     ALGO = "BFS"
 
-                bfs_button.color_change(colors["yellow"])
-                dijkstra_button.color_change(colors["white"])
-                asearch_button.color_change(colors["white"])
-                qlearning_button.color_change(colors["white"])
-                time.sleep(0.1)   
+            #     bfs_button.color_change(colors["yellow"])
+            #     dijkstra_button.color_change(colors["white"])
+            #     asearch_button.color_change(colors["white"])
+            #     qlearning_button.color_change(colors["white"])
+            #     time.sleep(0.1)   
 
             # button for A_search
-            elif asearch_button.distance(mouse) < RADIUS:
-                ALGO = "A_search"
+            # elif asearch_button.distance(mouse) < RADIUS:
+            #     ALGO = "A_search"
 
-                asearch_button.color_change(colors["yellow"])
-                dijkstra_button.color_change(colors["white"])
-                bfs_button.color_change(colors["white"])
-                qlearning_button.color_change(colors["white"])
-                time.sleep(0.1)
+            #     asearch_button.color_change(colors["yellow"])
+            #     dijkstra_button.color_change(colors["white"])
+            #     bfs_button.color_change(colors["white"])
+            #     qlearning_button.color_change(colors["white"])
+            #     time.sleep(0.1)
 
             # button for Q_learning
-            elif qlearning_button.distance(mouse) < RADIUS:
-                ALGO = "Q_learning"
+            # elif qlearning_button.distance(mouse) < RADIUS:
+            #     ALGO = "Q_learning"
 
-                qlearning_button.color_change(colors["yellow"])
-                dijkstra_button.color_change(colors["white"])
-                bfs_button.color_change(colors["white"])
-                asearch_button.color_change(colors["white"])
-                time.sleep(0.1)
+            #     qlearning_button.color_change(colors["yellow"])
+            #     dijkstra_button.color_change(colors["white"])
+            #     bfs_button.color_change(colors["white"])
+            #     asearch_button.color_change(colors["white"])
+            #     time.sleep(0.1)
             # button for Brrt# button for BRRT
             elif brrt_button.distance(mouse) < RADIUS:
                 ALGO = "BRRT"
 
                 brrt_button.color_change(colors["yellow"])
-                dijkstra_button.color_change(colors["white"])
-                bfs_button.color_change(colors["white"])
-                asearch_button.color_change(colors["white"])
-                qlearning_button.color_change(colors["white"])
+                # dijkstra_button.color_change(colors["white"])
+                # bfs_button.color_change(colors["white"])
+                # asearch_button.color_change(colors["white"])
+                # qlearning_button.color_change(colors["white"])
                 time.sleep(0.1)
 
             # drawing or erasing wall by checking corresponding flag and position of mouse
