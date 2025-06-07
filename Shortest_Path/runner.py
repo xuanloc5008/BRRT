@@ -328,25 +328,25 @@ while True:
             board.clear_visited()
 
         # run chosen algorithm
-        if ALGO == "Dijkstra":
-            algorithm = Dijkstra(board)
-            algorithm.initialize()
-            algorithm.solver()
+        # if ALGO == "Dijkstra":
+        #     algorithm = Dijkstra(board)
+        #     algorithm.initialize()
+        #     algorithm.solver()
         
-        elif ALGO == "BFS":
-            algorithm = BFS(board)
-            algorithm.initialize()
-            algorithm.solver()           
+        # elif ALGO == "BFS":
+        #     algorithm = BFS(board)
+        #     algorithm.initialize()
+        #     algorithm.solver()           
         
-        elif ALGO == "A_search":
-            algorithm = A_search(board)
-            algorithm.initialize()
-            algorithm.solver()
+        # elif ALGO == "A_search":
+        #     algorithm = A_search(board)
+        #     algorithm.initialize()
+        #     algorithm.solver()
 
-        elif ALGO == "Q_learning":
-            algorithm = Q_Learning(board)
-            algorithm.solver(TRAIN)
-        elif ALGO == "BRRT":
+        # elif ALGO == "Q_learning":
+        #     algorithm = Q_Learning(board)
+        #     algorithm.solver(TRAIN)
+        if ALGO == "BRRT":
             print("Initializing BRRT algorithm...")
             algorithm = BRRT(board)  # Giả định bạn đã implement class BRRT trong `Algorithm.py`
             algorithm.initialize()

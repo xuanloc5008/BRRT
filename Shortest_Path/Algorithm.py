@@ -48,6 +48,19 @@ class Search(metaclass=ABCMeta):
             rect = cells[i][j]
             pygame.draw.rect(self.board.screen, color, rect)
             pygame.display.flip()
+def sample_points_in_circle(center, radius, num_samples, board):
+    cx, cy = center
+    candidates = []
+    for _ in range(num_samples):
+        angle = random.uniform(0, 2 * math.pi)
+        r = random.uniform(0, radius)
+        dx = int(round(r * math.cos(angle)))
+        dy = int(round(r * math.sin(angle)))
+        nx, ny = cx + dx, cy + dy
+        if 0 <= nx < board.v_cells and 0 <= ny < board.h_cells:
+            if (nx, ny) not in board.wall:
+                candidates.append((nx, ny))
+    return candidates
 
 class BRRT(Search):
     def __init__(self, board: Board, max_iter=10000, step_size=1):
@@ -56,6 +69,7 @@ class BRRT(Search):
         self.step_size = step_size
         self.find = False
         self.takenNodes = set()  # To track taken nodes
+
 
     def initialize(self):
         self.start_tree = {self.board.start: None}
@@ -69,25 +83,14 @@ class BRRT(Search):
         if child != parent:  # Prevent self-loop
             tree[child] = parent
             tree_nodes.append(child)
+            self.takenNodes.add(child)  # Mark this node as taken           
+            print(f"[Taken Nodes] ({tree_name}) Node {child} added to taken nodes.") 
             print(f"[Tree Build] ({tree_name}) Added node {child} with parent {parent}")
             print(f"[Tree Build] ({tree_name}) {parent} -> {child}")
+            print(f"[Tree Build] ({tree_name}) Current taken nodes: {self.takenNodes}")
         else:
             print(f"[Warning] ({tree_name}) Attempted to add self-loop at node {child}, skipped.")
 
-
-    def sample_points_in_circle(center, radius, num_samples, board):
-        cx, cy = center
-        candidates = []
-        for _ in range(num_samples):
-            angle = random.uniform(0, 2 * math.pi)
-            r = random.uniform(0, radius)
-            dx = int(round(r * math.cos(angle)))
-            dy = int(round(r * math.sin(angle)))
-            nx, ny = cx + dx, cy + dy
-            if 0 <= nx < board.v_cells and 0 <= ny < board.h_cells:
-                if (nx, ny) not in board.wall:
-                    candidates.append((nx, ny))
-        return candidates
 
     def extend_tree(self, tree_nodes, tree, other_tree):
         rand_point = (random.randint(0, self.board.v_cells - 1),
@@ -99,23 +102,21 @@ class BRRT(Search):
             return None
 
         direction = (rand_point[0] - nearest[0], rand_point[1] - nearest[1])
+        print(f"[Extend Tree] Nearest node to random point {rand_point} is {nearest} with direction {direction}")
         step = (
             nearest[0] + self.step_size * (1 if direction[0] > 0 else -1 if direction[0] < 0 else 0),
             nearest[1] + self.step_size * (1 if direction[1] > 0 else -1 if direction[1] < 0 else 0)
         )
-
         if 0 <= step[0] < self.board.v_cells and 0 <= step[1] < self.board.h_cells:
             if step not in self.board.wall:
                 if step in tree or step in other_tree or step in self.takenNodes:
                     print(f"[Warning] Node {step} already exists in tree or taken nodes, skipping.")
-                    self.takenNodes.add(step)  # Add to taken nodes to avoid future conflicts
                     return None  # Avoid re-adding nodes
                 for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     neighbor = (step[0] + dx, step[1] + dy)
                     if neighbor in other_tree:
                         tree_name = "start" if tree is self.start_tree else "goal"
                         self.add_to_tree(tree, tree_nodes, step, nearest, tree_name=tree_name)
-
                         if step not in other_tree:
                             other_tree[step] = neighbor
 
