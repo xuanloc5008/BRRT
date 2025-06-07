@@ -312,6 +312,7 @@ class BRRT(Search):
         self.goal_nodes = [self.board.target]
         self.s0 = self.board.start  # Initial start node
         self.t0 = self.board.target  # Initial target node
+
         print("BRRT initialized with start at {} and target at {}".format(self.board.start, self.board.target))
 
     def add_to_tree(self, tree, tree_nodes, child, parent, tree_name="unknown"):
@@ -322,6 +323,15 @@ class BRRT(Search):
             print(f"[Tree Build] ({tree_name}) {parent} -> {child}")
         else:
             print(f"[Warning] ({tree_name}) Attempted to add self-loop at node {child}, skipped.")
+    def get_adjacent_nodes(self, node):
+        x, y = node
+        neighbors = []
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Chỉ các hướng ngang/dọc
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.board.v_cells and 0 <= ny < self.board.h_cells:
+                if (nx, ny) not in self.board.wall:
+                    neighbors.append((nx, ny))
+        return neighbors
 
     def sample_points_in_circle(self, center, radius, num_samples):
         cx, cy = center
@@ -343,9 +353,11 @@ class BRRT(Search):
         return (s_guide, t_guide)
 
     def sampling(self, S, T):
-        """Implement guided sampling with heuristic influence."""
+        """Ưu tiên sampling về phía đích (t_0)."""
         n = random.random()
-        if n < self.p1:  # Uniform sampling from X_free
+        
+        if n < self.p1:
+            # Uniform sampling
             x_rand = (
                 random.randint(0, self.board.v_cells - 1),
                 random.randint(0, self.board.h_cells - 1)
@@ -355,31 +367,33 @@ class BRRT(Search):
                     random.randint(0, self.board.v_cells - 1),
                     random.randint(0, self.board.h_cells - 1)
                 )
-        else:
-            s_guide, t_guide = self.find_guide_pair(S, T)
-            # Ensure s_guide and t_guide are valid tuples
-            if not isinstance(s_guide, tuple) or not isinstance(t_guide, tuple):
-                s_guide = self.s0
-                t_guide = self.t0
-            if n < self.p1 + self.p2:  # Sampling within circle around guide pair
-                center = ((s_guide[0] + t_guide[0]) // 2, (s_guide[1] + t_guide[1]) // 2)
-                radius = math.hypot(s_guide[0] - t_guide[0], s_guide[1] - t_guide[1])
-                candidates = self.sample_points_in_circle(center, radius, 5)
-                x_rand = random.choice(candidates) if candidates else s_guide
-            else:  # Sampling along line toward t_guide with heuristic bias
-                direction = (t_guide[0] - s_guide[0], t_guide[1] - s_guide[1])
-                dist = math.hypot(direction[0], direction[1])
-                if dist == 0:
-                    x_rand = s_guide
-                else:
-                    t = random.uniform(0, 1)
-                    x_rand = (
-                        int(s_guide[0] + t * direction[0]),
-                        int(s_guide[1] + t * direction[1])
-                    )
-                    if not (0 <= x_rand[0] < self.board.v_cells and 0 <= x_rand[1] < self.board.h_cells) or x_rand in self.board.wall:
-                        x_rand = t_guide
-        return x_rand
+            return x_rand
+
+        # Nếu không, dẫn hướng sampling về phía t0
+        target = self.t0
+        tree = S  # Cây hiện tại
+        
+        # Chọn node trong cây hiện tại gần nhất với đích
+        nearest = self.get_best_node(list(tree.keys()), target)
+
+        # Sinh điểm xung quanh nearest, nhưng ưu tiên hướng về target
+        if nearest:
+            direction = (target[0] - nearest[0], target[1] - nearest[1])
+            dist = math.hypot(direction[0], direction[1])
+
+            if dist > 0:
+                ratio = min(self.step_size / dist, 1)
+                dx = int(round(direction[0] * ratio))
+                dy = int(round(direction[1] * ratio))
+                x_rand = (nearest[0] + dx, nearest[1] + dy)
+
+                if 0 <= x_rand[0] < self.board.v_cells and 0 <= x_rand[1] < self.board.h_cells:
+                    if x_rand not in self.board.wall:
+                        return x_rand
+
+        # Dự phòng: trả về nearest
+        return nearest
+
 
     def compute_distance(self, p1, p2):
         """Compute Euclidean distance between two points."""
@@ -391,49 +405,66 @@ class BRRT(Search):
         d_si_t0 = self.compute_distance(s_i, self.t0)
         d_tj_s0 = self.compute_distance(t_j, self.s0)
         return self.alpha * d_si_tj + self.beta * d_si_t0 + self.gamma * d_tj_s0
+    def get_best_node(self, tree_nodes, target_node):
+        """Chọn node trong cây gần nhất với target_node theo heuristic."""
+        best_node = None
+        best_score = float('inf')
+        for node in tree_nodes:
+            score = self.heuristic(node, target_node)
+            if score < best_score:
+                best_score = score
+                best_node = node
+        return best_node
+    def step_from_to(self, start, target):
+        """Tiến một bước từ `start` về phía `target`, với khoảng cách tối đa là `step_size`."""
+        dx = target[0] - start[0]
+        dy = target[1] - start[1]
+        dist = math.hypot(dx, dy)
 
-    def extend_tree(self, tree_nodes, tree, other_tree):
-        # Sample a point using the guided sampling strategy
-        x_rand = self.sampling(tree, other_tree)
-
-        # Find the node in the current tree with the lowest heuristic value to the sampled point
-        best_s_i = min(tree_nodes, key=lambda s_i: self.heuristic(s_i, x_rand) if x_rand not in self.board.wall else float('inf'))
-        
-        if best_s_i in self.board.wall:
-            return None
-
-        # Find the nearest node in the other tree to guide the extension
-        best_t_j = min(other_tree.keys(), key=lambda t_j: self.heuristic(best_s_i, t_j)) if other_tree else self.t0
-
-        # Direction toward the best target node in the other tree
-        direction = (best_t_j[0] - best_s_i[0], best_t_j[1] - best_s_i[1])
-        dist = math.hypot(direction[0], direction[1])
         if dist == 0:
+            return start
+
+        ratio = self.step_size / dist
+        new_x = int(round(start[0] + dx * ratio))
+        new_y = int(round(start[1] + dy * ratio))
+
+        # Đảm bảo điểm mới nằm trong giới hạn bản đồ
+        new_x = max(0, min(new_x, self.board.v_cells - 1))
+        new_y = max(0, min(new_y, self.board.h_cells - 1))
+
+        return (new_x, new_y)
+
+    def extend_tree(self, tree, tree_nodes, target_node, other_tree):
+        best_s_i = self.get_best_node(tree_nodes, target_node)
+
+        if best_s_i is None:
             return None
 
-        step = (
-            int(round(best_s_i[0] + self.step_size * direction[0] / dist)),
-            int(round(best_s_i[1] + self.step_size * direction[1] / dist))
-        )
+        step = self.step_from_to(best_s_i, target_node)
 
-        if 0 <= step[0] < self.board.v_cells and 0 <= step[1] < self.board.h_cells:
-            if step not in self.board.wall:
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        # Check if this step is already in the tree
+        if step in tree:
+            return None
+
+        if step not in self.board.wall:
+            tree_name = "start" if tree is self.start_tree else "goal"
+            self.add_to_tree(tree, tree_nodes, step, best_s_i, tree_name=tree_name)
+
+            # Kiểm tra vùng lân cận 3x3 xem có node nào thuộc cây còn lại không
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx == 0 and dy == 0:
+                        continue
                     neighbor = (step[0] + dx, step[1] + dy)
                     if neighbor in other_tree:
-                        tree_name = "start" if tree is self.start_tree else "goal"
-                        self.add_to_tree(tree, tree_nodes, step, best_s_i, tree_name=tree_name)
                         if step not in other_tree:
                             other_tree[step] = neighbor
                         if neighbor not in tree:
                             tree[neighbor] = step
                         print(f"[Connection] Trees connected at node {step}")
-                        return step
+                        return step  # Đã kết nối thành công
 
-                # Expand current tree if no connection
-                tree_name = "start" if tree is self.start_tree else "goal"
-                self.add_to_tree(tree, tree_nodes, step, best_s_i, tree_name=tree_name)
-        return None
+        return None  # Không kết nối được
 
     def draw_tree(self, tree, cells, color):
         for node in tree:
@@ -461,7 +492,8 @@ class BRRT(Search):
             time.sleep(DELAY)
 
             if toggle:
-                new_node = self.extend_tree(self.start_nodes, self.start_tree, self.goal_tree)
+                target_node = self.sampling(self.start_tree, self.goal_tree)
+                new_node = self.extend_tree(self.start_tree, self.start_nodes, target_node, self.goal_tree)
                 if new_node:
                     self.find = True
                     self.path = self.build_path(new_node)
@@ -470,7 +502,8 @@ class BRRT(Search):
                     break
                 self.draw_tree(self.start_tree, cells, self.board.colors["green"])
             else:
-                new_node = self.extend_tree(self.goal_nodes, self.goal_tree, self.start_tree)
+                target_node = self.sampling(self.goal_tree, self.start_tree)
+                new_node = self.extend_tree(self.goal_tree, self.goal_nodes, target_node, self.start_tree)
                 if new_node:
                     self.find = True
                     self.path = self.build_path(new_node)
@@ -483,6 +516,7 @@ class BRRT(Search):
             self.draw_start_and_goal(cells)
             pygame.display.flip()
 
+
         if self.find:
             while True:
                 for event in pygame.event.get():
@@ -490,24 +524,47 @@ class BRRT(Search):
                         pygame.quit()
                         return
                 time.sleep(0.1)
+    def interpolate_path(self, start, end):
+        """Trả về danh sách các ô từ start đến end theo từng bước liền kề (4 hướng)."""
+        path = [start]
+        x1, y1 = start
+        x2, y2 = end
+        while (x1, y1) != (x2, y2):
+            if x1 < x2: x1 += 1
+            elif x1 > x2: x1 -= 1
+            elif y1 < y2: y1 += 1
+            elif y1 > y2: y1 -= 1
+            path.append((x1, y1))
+        return path
 
     def build_path(self, connect_node):
-        def trace_path(tree, node, name):
+        def trace_path(tree, node):
             path = []
             while node is not None and node in tree:
                 path.append(node)
                 node = tree[node]
             return path
 
-        path_start = trace_path(self.start_tree, connect_node, "start_tree")
-        path_goal = trace_path(self.goal_tree, connect_node, "goal_tree")
-        
+        path_start = trace_path(self.start_tree, connect_node)
+        path_goal = trace_path(self.goal_tree, connect_node)
+
         if not path_start or not path_goal:
             print("[ERROR] Could not build complete path.")
             return []
 
         path_start.reverse()
-        return path_start + path_goal[1:] if path_goal else path_start
+        full_path = []
+
+        # Nối từng cặp điểm bằng các bước nhỏ
+        combined_path = path_start + path_goal[1:]
+        for i in range(len(combined_path) - 1):
+            seg = self.interpolate_path(combined_path[i], combined_path[i + 1])
+            if i > 0:
+                seg = seg[1:]  # tránh trùng điểm
+            full_path.extend(seg)
+
+        return full_path
+
 
     def output(self):
         if not self.find or not self.path:
