@@ -304,6 +304,7 @@ class BRRT(Search):
         self.alpha = alpha  # Weight for d(s_i, t_j)
         self.beta = beta   # Weight for d(s_i, t_0)
         self.gamma = gamma  # Weight for d(t_j, s_0)
+        self.takenNodes = set()  # To track taken nodes
 
     def initialize(self):
         self.start_tree = {self.board.start: None}
@@ -312,6 +313,7 @@ class BRRT(Search):
         self.goal_nodes = [self.board.target]
         self.s0 = self.board.start  # Initial start node
         self.t0 = self.board.target  # Initial target node
+        self.takenNodes = {self.board.start, self.board.target}
 
         print("BRRT initialized with start at {} and target at {}".format(self.board.start, self.board.target))
 
@@ -430,12 +432,13 @@ class BRRT(Search):
         step = self.step_from_to(best_s_i, target_node)
 
         # Check if this step is already in the tree
-        if step in tree:
+        if step in self.takenNodes:
             return None
 
         if step not in self.board.wall:
             tree_name = "start" if tree is self.start_tree else "goal"
             self.add_to_tree(tree, tree_nodes, step, best_s_i, tree_name=tree_name)
+            self.takenNodes.add(step)
 
             # Kiểm tra vùng lân cận 3x3 xem có node nào thuộc cây còn lại không
             for dx in [-1, 0, 1]:
@@ -479,7 +482,11 @@ class BRRT(Search):
             time.sleep(DELAY)
 
             if toggle:
-                target_node = self.sampling(self.start_tree, self.goal_tree)
+                # Start tree sampling cho đến khi ra node chưa bị chiếm
+                while True:
+                    target_node = self.sampling(self.start_tree, self.goal_tree)
+                    if target_node not in self.takenNodes:
+                        break
                 new_node = self.extend_tree(self.start_tree, self.start_nodes, target_node, self.goal_tree)
                 if new_node:
                     self.find = True
@@ -489,7 +496,11 @@ class BRRT(Search):
                     break
                 self.draw_tree(self.start_tree, cells, self.board.colors["green"])
             else:
-                target_node = self.sampling(self.goal_tree, self.start_tree)
+                # Goal tree sampling cho đến khi ra node chưa bị chiếm
+                while True:
+                    target_node = self.sampling(self.goal_tree, self.start_tree)
+                    if target_node not in self.takenNodes:
+                        break
                 new_node = self.extend_tree(self.goal_tree, self.goal_nodes, target_node, self.start_tree)
                 if new_node:
                     self.find = True
@@ -499,10 +510,9 @@ class BRRT(Search):
                     break
                 self.draw_tree(self.goal_tree, cells, self.board.colors["purple"])
 
-            toggle = not toggle
+            toggle = not toggle  # Đảo chiều cho lần tiếp theo
             self.draw_start_and_goal(cells)
             pygame.display.flip()
-
 
         if self.find:
             while True:
